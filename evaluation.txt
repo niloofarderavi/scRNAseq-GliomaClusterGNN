@@ -1,0 +1,309 @@
+==================================================
+Checking dependencies:
+numpy                version: 2.0.2
+igraph               version: 0.11.8
+leidenalg            installed (version checking not available)
+mygene               version: 3.2.2
+gseapy               version: 1.1.8
+torch                version: 2.6.0+cu124
+torch_geometric      version: 2.6.1
+scanpy               version: 1.11.1
+scipy                version: 1.14.1
+torchvision          version: 0.21.0+cu124
+==================================================
+
+WARNING:biothings.client:Input sequence provided is already in string format. No operation performed
+WARNING:biothings.client:Input sequence provided is already in string format. No operation performed
+INFO:biothings.client:querying 1-1000 ...
+INFO:biothings.client:querying 1001-1186 ...
+INFO:biothings.client:Finished.
+WARNING:biothings.client:1 input query terms found no hit:	['ENSG00000112096']
+WARNING:SpatialRNA:Unmapped genes: ['ENSG00000112096', 'ENSG00000286070']
+/usr/local/lib/python3.11/dist-packages/anndata/_core/anndata.py:1758: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+  utils.warn_names_duplicates("var")
+<ipython-input-7-cf3a19b01a8f>:364: FutureWarning: In the future, the default backend for leiden will be igraph instead of leidenalg.
+
+ To achieve the future defaults please pass: flavor="igraph" and n_iterations=2.  directed must also be False to work with igraph's implementation.
+  sc.tl.leiden(adata, resolution=0.5)
+/usr/local/lib/python3.11/dist-packages/scanpy/preprocessing/_simple.py:287: ImplicitModificationWarning: Trying to modify attribute `.var` of view, initializing view as actual.
+  adata.var["n_cells"] = number
+<ipython-input-7-cf3a19b01a8f>:383: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:254.)
+  edge_index = torch.tensor([edges.row, edges.col], dtype=torch.long)
+Epoch 1/100:
+  Train Loss: 2.2878, Acc: 0.2284, F1: 0.1784
+  Val Loss: 1.8639, Acc: 0.3602, F1: 0.3212
+  LR: 1.00e-03
+Epoch 2/100:
+  Train Loss: 1.4167, Acc: 0.6423, F1: 0.5977
+  Val Loss: 1.4795, Acc: 0.5787, F1: 0.5196
+  LR: 1.00e-03
+Epoch 3/100:
+  Train Loss: 0.9479, Acc: 0.7772, F1: 0.7436
+  Val Loss: 1.1340, Acc: 0.6636, F1: 0.6188
+  LR: 1.00e-03
+Epoch 4/100:
+  Train Loss: 0.7014, Acc: 0.8510, F1: 0.8347
+  Val Loss: 0.8453, Acc: 0.7298, F1: 0.6996
+  LR: 1.00e-03
+Epoch 5/100:
+  Train Loss: 0.5530, Acc: 0.8813, F1: 0.8705
+  Val Loss: 0.6422, Acc: 0.7961, F1: 0.7794
+  LR: 1.00e-03
+Epoch 6/100:
+  Train Loss: 0.4782, Acc: 0.8951, F1: 0.8827
+  Val Loss: 0.5441, Acc: 0.8251, F1: 0.8149
+  LR: 1.00e-03
+Epoch 7/100:
+  Train Loss: 0.4169, Acc: 0.9065, F1: 0.8947
+  Val Loss: 0.5027, Acc: 0.8427, F1: 0.8385
+  LR: 1.00e-03
+Epoch 8/100:
+  Train Loss: 0.3733, Acc: 0.9127, F1: 0.9017
+  Val Loss: 0.4778, Acc: 0.8437, F1: 0.8410
+  LR: 1.00e-03
+Epoch 9/100:
+  Train Loss: 0.3210, Acc: 0.9369, F1: 0.9278
+  Val Loss: 0.4501, Acc: 0.8509, F1: 0.8491
+  LR: 1.00e-03
+Epoch 10/100:
+  Train Loss: 0.2917, Acc: 0.9355, F1: 0.9250
+  Val Loss: 0.4062, Acc: 0.8623, F1: 0.8613
+  LR: 1.00e-03
+Epoch 11/100:
+  Train Loss: 0.2785, Acc: 0.9314, F1: 0.9219
+  Val Loss: 0.3657, Acc: 0.8810, F1: 0.8811
+  LR: 1.00e-03
+Epoch 12/100:
+  Train Loss: 0.2548, Acc: 0.9420, F1: 0.9364
+  Val Loss: 0.3323, Acc: 0.8986, F1: 0.8988
+  LR: 1.00e-03
+Epoch 13/100:
+  Train Loss: 0.2362, Acc: 0.9427, F1: 0.9366
+  Val Loss: 0.3159, Acc: 0.9099, F1: 0.9106
+  LR: 1.00e-03
+Epoch 14/100:
+  Train Loss: 0.2224, Acc: 0.9438, F1: 0.9398
+  Val Loss: 0.3089, Acc: 0.9120, F1: 0.9136
+  LR: 1.00e-03
+Epoch 15/100:
+  Train Loss: 0.2086, Acc: 0.9493, F1: 0.9443
+  Val Loss: 0.2964, Acc: 0.9161, F1: 0.9177
+  LR: 1.00e-03
+Epoch 16/100:
+  Train Loss: 0.1912, Acc: 0.9521, F1: 0.9485
+  Val Loss: 0.2865, Acc: 0.9193, F1: 0.9208
+  LR: 1.00e-03
+Epoch 17/100:
+  Train Loss: 0.1876, Acc: 0.9514, F1: 0.9479
+  Val Loss: 0.2693, Acc: 0.9234, F1: 0.9245
+  LR: 1.00e-03
+Epoch 18/100:
+  Train Loss: 0.1778, Acc: 0.9593, F1: 0.9568
+  Val Loss: 0.2498, Acc: 0.9286, F1: 0.9289
+  LR: 1.00e-03
+Epoch 19/100:
+  Train Loss: 0.1678, Acc: 0.9590, F1: 0.9555
+  Val Loss: 0.2303, Acc: 0.9379, F1: 0.9370
+  LR: 1.00e-03
+Epoch 20/100:
+  Train Loss: 0.1620, Acc: 0.9562, F1: 0.9534
+  Val Loss: 0.2116, Acc: 0.9451, F1: 0.9435
+  LR: 1.00e-03
+Epoch 21/100:
+  Train Loss: 0.1580, Acc: 0.9569, F1: 0.9540
+  Val Loss: 0.1974, Acc: 0.9451, F1: 0.9435
+  LR: 1.00e-03
+Epoch 22/100:
+  Train Loss: 0.1470, Acc: 0.9607, F1: 0.9580
+  Val Loss: 0.1853, Acc: 0.9493, F1: 0.9475
+  LR: 1.00e-03
+Epoch 23/100:
+  Train Loss: 0.1469, Acc: 0.9579, F1: 0.9565
+  Val Loss: 0.1737, Acc: 0.9503, F1: 0.9486
+  LR: 1.00e-03
+Epoch 24/100:
+  Train Loss: 0.1371, Acc: 0.9645, F1: 0.9636
+  Val Loss: 0.1650, Acc: 0.9534, F1: 0.9526
+  LR: 1.00e-03
+Epoch 25/100:
+  Train Loss: 0.1390, Acc: 0.9610, F1: 0.9584
+  Val Loss: 0.1588, Acc: 0.9524, F1: 0.9526
+  LR: 1.00e-03
+Epoch 26/100:
+  Train Loss: 0.1307, Acc: 0.9648, F1: 0.9640
+  Val Loss: 0.1563, Acc: 0.9555, F1: 0.9561
+  LR: 1.00e-03
+Epoch 27/100:
+  Train Loss: 0.1243, Acc: 0.9665, F1: 0.9660
+  Val Loss: 0.1583, Acc: 0.9534, F1: 0.9542
+  LR: 1.00e-03
+Epoch 28/100:
+  Train Loss: 0.1226, Acc: 0.9645, F1: 0.9621
+  Val Loss: 0.1557, Acc: 0.9524, F1: 0.9532
+  LR: 1.00e-03
+Epoch 29/100:
+  Train Loss: 0.1122, Acc: 0.9707, F1: 0.9704
+  Val Loss: 0.1430, Acc: 0.9545, F1: 0.9550
+  LR: 1.00e-03
+Epoch 30/100:
+  Train Loss: 0.1090, Acc: 0.9696, F1: 0.9694
+  Val Loss: 0.1335, Acc: 0.9576, F1: 0.9580
+  LR: 1.00e-03
+Epoch 31/100:
+  Train Loss: 0.1117, Acc: 0.9703, F1: 0.9700
+  Val Loss: 0.1276, Acc: 0.9596, F1: 0.9600
+  LR: 1.00e-03
+Epoch 32/100:
+  Train Loss: 0.1096, Acc: 0.9676, F1: 0.9673
+  Val Loss: 0.1251, Acc: 0.9596, F1: 0.9599
+  LR: 1.00e-03
+Epoch 33/100:
+  Train Loss: 0.1014, Acc: 0.9707, F1: 0.9704
+  Val Loss: 0.1244, Acc: 0.9617, F1: 0.9619
+  LR: 1.00e-03
+Epoch 34/100:
+  Train Loss: 0.0979, Acc: 0.9745, F1: 0.9743
+  Val Loss: 0.1247, Acc: 0.9596, F1: 0.9598
+  LR: 1.00e-03
+Epoch 35/100:
+  Train Loss: 0.1005, Acc: 0.9727, F1: 0.9725
+  Val Loss: 0.1270, Acc: 0.9596, F1: 0.9598
+  LR: 1.00e-03
+Epoch 36/100:
+  Train Loss: 0.0937, Acc: 0.9752, F1: 0.9750
+  Val Loss: 0.1302, Acc: 0.9545, F1: 0.9547
+  LR: 1.00e-03
+Epoch 37/100:
+  Train Loss: 0.0880, Acc: 0.9762, F1: 0.9760
+  Val Loss: 0.1309, Acc: 0.9555, F1: 0.9558
+  LR: 1.00e-03
+Epoch 38/100:
+  Train Loss: 0.0869, Acc: 0.9734, F1: 0.9734
+  Val Loss: 0.1301, Acc: 0.9576, F1: 0.9577
+  LR: 1.00e-03
+Epoch 39/100:
+  Train Loss: 0.0869, Acc: 0.9731, F1: 0.9730
+  Val Loss: 0.1297, Acc: 0.9586, F1: 0.9587
+  LR: 1.00e-03
+Epoch 40/100:
+  Train Loss: 0.0879, Acc: 0.9755, F1: 0.9753
+  Val Loss: 0.1294, Acc: 0.9555, F1: 0.9555
+  LR: 1.00e-03
+Epoch 41/100:
+  Train Loss: 0.0870, Acc: 0.9748, F1: 0.9746
+  Val Loss: 0.1281, Acc: 0.9565, F1: 0.9565
+  LR: 5.00e-04
+Epoch 42/100:
+  Train Loss: 0.0851, Acc: 0.9748, F1: 0.9747
+  Val Loss: 0.1273, Acc: 0.9576, F1: 0.9575
+  LR: 5.00e-04
+Epoch 43/100:
+  Train Loss: 0.0864, Acc: 0.9727, F1: 0.9726
+  Val Loss: 0.1266, Acc: 0.9565, F1: 0.9564
+  LR: 5.00e-04
+Epoch 44/100:
+  Train Loss: 0.0795, Acc: 0.9800, F1: 0.9799
+  Val Loss: 0.1265, Acc: 0.9555, F1: 0.9554
+  LR: 5.00e-04
+Epoch 45/100:
+  Train Loss: 0.0823, Acc: 0.9748, F1: 0.9747
+  Val Loss: 0.1259, Acc: 0.9565, F1: 0.9564
+  LR: 5.00e-04
+Epoch 46/100:
+  Train Loss: 0.0823, Acc: 0.9759, F1: 0.9757
+  Val Loss: 0.1242, Acc: 0.9555, F1: 0.9554
+  LR: 5.00e-04
+Epoch 47/100:
+  Train Loss: 0.0770, Acc: 0.9790, F1: 0.9788
+  Val Loss: 0.1229, Acc: 0.9576, F1: 0.9574
+  LR: 5.00e-04
+Epoch 48/100:
+  Train Loss: 0.0797, Acc: 0.9762, F1: 0.9760
+  Val Loss: 0.1220, Acc: 0.9607, F1: 0.9605
+  LR: 5.00e-04
+Epoch 49/100:
+  Train Loss: 0.0747, Acc: 0.9769, F1: 0.9767
+  Val Loss: 0.1215, Acc: 0.9596, F1: 0.9596
+  LR: 5.00e-04
+Epoch 50/100:
+  Train Loss: 0.0754, Acc: 0.9772, F1: 0.9771
+  Val Loss: 0.1205, Acc: 0.9596, F1: 0.9596
+  LR: 5.00e-04
+Epoch 51/100:
+  Train Loss: 0.0761, Acc: 0.9765, F1: 0.9764
+  Val Loss: 0.1200, Acc: 0.9586, F1: 0.9586
+  LR: 5.00e-04
+Epoch 52/100:
+  Train Loss: 0.0725, Acc: 0.9807, F1: 0.9806
+  Val Loss: 0.1202, Acc: 0.9596, F1: 0.9596
+  LR: 5.00e-04
+Epoch 53/100:
+  Train Loss: 0.0751, Acc: 0.9783, F1: 0.9782
+  Val Loss: 0.1210, Acc: 0.9586, F1: 0.9586
+  LR: 5.00e-04
+Epoch 54/100:
+  Train Loss: 0.0767, Acc: 0.9755, F1: 0.9753
+  Val Loss: 0.1219, Acc: 0.9576, F1: 0.9576
+  LR: 5.00e-04
+Epoch 55/100:
+  Train Loss: 0.0750, Acc: 0.9786, F1: 0.9785
+  Val Loss: 0.1220, Acc: 0.9565, F1: 0.9566
+  LR: 5.00e-04
+Epoch 56/100:
+  Train Loss: 0.0735, Acc: 0.9769, F1: 0.9767
+  Val Loss: 0.1218, Acc: 0.9586, F1: 0.9586
+  LR: 5.00e-04
+Epoch 57/100:
+  Train Loss: 0.0747, Acc: 0.9790, F1: 0.9789
+  Val Loss: 0.1213, Acc: 0.9586, F1: 0.9586
+  LR: 5.00e-04
+Epoch 58/100:
+  Train Loss: 0.0698, Acc: 0.9793, F1: 0.9792
+  Val Loss: 0.1216, Acc: 0.9596, F1: 0.9596
+  LR: 5.00e-04
+Epoch 59/100:
+  Train Loss: 0.0721, Acc: 0.9779, F1: 0.9779
+  Val Loss: 0.1220, Acc: 0.9586, F1: 0.9586
+  LR: 2.50e-04
+Epoch 60/100:
+  Train Loss: 0.0687, Acc: 0.9786, F1: 0.9785
+  Val Loss: 0.1220, Acc: 0.9586, F1: 0.9586
+  LR: 2.50e-04
+Epoch 61/100:
+  Train Loss: 0.0700, Acc: 0.9786, F1: 0.9785
+  Val Loss: 0.1217, Acc: 0.9586, F1: 0.9586
+  LR: 2.50e-04
+Epoch 62/100:
+  Train Loss: 0.0714, Acc: 0.9772, F1: 0.9771
+  Val Loss: 0.1219, Acc: 0.9596, F1: 0.9596
+  LR: 2.50e-04
+Epoch 63/100:
+  Train Loss: 0.0695, Acc: 0.9817, F1: 0.9816
+  Val Loss: 0.1216, Acc: 0.9586, F1: 0.9586
+  LR: 2.50e-04
+Epoch 64/100:
+  Train Loss: 0.0695, Acc: 0.9810, F1: 0.9810
+  Val Loss: 0.1213, Acc: 0.9586, F1: 0.9586
+  LR: 2.50e-04
+Epoch 65/100:
+  Train Loss: 0.0684, Acc: 0.9817, F1: 0.9817
+  Val Loss: 0.1213, Acc: 0.9555, F1: 0.9555
+  LR: 2.50e-04
+Epoch 66/100:
+  Train Loss: 0.0665, Acc: 0.9821, F1: 0.9820
+  Val Loss: 0.1217, Acc: 0.9555, F1: 0.9555
+  LR: 2.50e-04
+Final Test Accuracy: 0.9431, F1: 0.9430
+
+Top 10 Highly Variable Genes:
+============================
+1. CHI3L1
+2. HLA-DRA
+3. GFAP
+4. PTGDS
+5. CXCL8
+6. PLP1
+7. HLA-DRB1
+8. SPP1
+9. HSPA6
+10. IGFBP2

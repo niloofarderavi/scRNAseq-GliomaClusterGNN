@@ -1,0 +1,490 @@
+# Ensure torch and torchvision are imported first to avoid circular imports
+import torch
+import torchvision
+# Remaining imports
+import os
+import pandas as pd
+import scipy.io
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
+from torch_geometric.nn import GCNConv
+from torch_geometric.data import Data
+from torch_geometric.utils import to_undirected
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import scanpy as sc
+import gseapy as gp
+from mygene import MyGeneInfo
+import logging
+from scipy import sparse
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.nn import BatchNorm1d
+from packaging import version as pkg_version
+import time
+
+def check_dependencies():
+    """Check all required dependencies with proper version handling"""
+    dependencies = {
+        'numpy': '1.21.0',
+        'igraph': '0.9.0',
+        'leidenalg': None,
+        'mygene': None,
+        'gseapy': None,
+        'torch': '2.3.0',
+        'torch_geometric': '2.0.0',
+        'scanpy': '1.9.0',
+        'scipy': '1.7.0',
+        'torchvision': '0.18.0'
+    }
+    
+    print("="*50)
+    print("Checking dependencies:")
+    for pkg, min_ver in dependencies.items():
+        try:
+            pkg_module = __import__(pkg)
+            if pkg == 'leidenalg':
+                print(f"{pkg:20} installed (version checking not available)")
+                continue
+            current_version = getattr(pkg_module, '__version__', None)
+            if current_version is None:
+                print(f"{pkg:20} installed (version unknown)")
+                continue
+            print(f"{pkg:20} version: {current_version}")
+            if min_ver and pkg_version.parse(current_version) < pkg_version.parse(min_ver):
+                logger.warning(f"{pkg} version {current_version} is below recommended {min_ver}")
+                print(f"Warning: {pkg} version {current_version} is below recommended {min_ver}")
+        except ImportError:
+            logger.error(f"{pkg} is not installed")
+            print(f"Error: Required package {pkg} not found. Please install with: pip install {pkg}")
+            raise
+    print("="*50 + "\n")
+
+class ImprovedGNN(nn.Module):
+    """Enhanced GNN model with batch normalization and residual connections"""
+    def __init__(self, num_features, num_classes, hidden_dim=128):
+        super().__init__()
+        self.conv1 = GCNConv(num_features, hidden_dim)
+        self.bn1 = BatchNorm1d(hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, hidden_dim)
+        self.bn2 = BatchNorm1d(hidden_dim)
+        self.conv3 = GCNConv(hidden_dim, num_classes)
+        self.dropout = nn.Dropout(0.5)
+        self.residual = nn.Linear(num_features, hidden_dim)
+        self._init_weights()
+    
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+    
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+        x1 = self.conv1(x, edge_index)
+        x1 = self.bn1(x1)
+        residual = self.residual(x)
+        x = torch.relu(x1 + residual[:x1.size(0)])
+        x = self.dropout(x)
+        x = self.conv2(x, edge_index)
+        x = self.bn2(x)
+        x = torch.relu(x)
+        x = self.dropout(x)
+        x = self.conv3(x, edge_index)
+        return x
+
+def map_gene_symbols(gene_ids):
+    """Batch process gene symbol mapping with robust error handling"""
+    mg = MyGeneInfo()
+    try:
+        if hasattr(gene_ids, 'tolist'):
+            gene_list = gene_ids.tolist()
+        else:
+            gene_list = list(gene_ids)
+        results = mg.querymany(
+            gene_list,
+            scopes='ensembl.gene',
+            fields='symbol',
+            species='human',
+            returnall=True
+        )
+        mapped_symbols = []
+        unmapped = []
+        for result in results['out']:
+            if 'symbol' in result:
+                mapped_symbols.append(result['symbol'])
+            else:
+                mapped_symbols.append(result['query'])
+                unmapped.append(result['query'])
+        if unmapped:
+            logger.warning(f"Unmapped genes: {unmapped}")
+        return mapped_symbols, unmapped
+    except Exception as e:
+        logger.error(f"Gene mapping failed: {str(e)}")
+        if hasattr(gene_ids, 'tolist'):
+            return gene_ids.tolist(), gene_ids.tolist()
+        return list(gene_ids), list(gene_ids)
+
+def robust_subset_edge_index(edge_index, indices, num_nodes):
+    """More robust edge index filtering with better error handling"""
+    if edge_index.shape[1] == 0:
+        logger.warning("Empty edge index provided")
+        return torch.empty((2, 0), dtype=torch.long)
+    indices = torch.tensor(indices, dtype=torch.long)
+    mask = torch.isin(edge_index[0], indices) & torch.isin(edge_index[1], indices)
+    if mask.sum() == 0:
+        logger.warning(f"No edges remain after filtering for {len(indices)} nodes")
+        return torch.empty((2, 0), dtype=torch.long)
+    filtered_edge_index = edge_index[:, mask]
+    index_map = torch.full((num_nodes,), -1, dtype=torch.long)
+    index_map[indices] = torch.arange(len(indices), dtype=torch.long)
+    remapped_edge_index = index_map[filtered_edge_index]
+    if (remapped_edge_index < 0).any():
+        logger.error("Negative indices in remapped edge index")
+        raise ValueError("Invalid edge remapping")
+    return remapped_edge_index
+
+def train_model(model, train_data, val_data, optimizer, criterion, device, num_epochs=100, patience=10):
+    """Enhanced training loop with learning rate scheduling and early stopping"""
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=patience//2, factor=0.5)
+    metrics = {
+        'train_loss': [],
+        'val_loss': [],
+        'train_acc': [],
+        'val_acc': [],
+        'train_f1': [],
+        'val_f1': [],
+        'best_epoch': 0
+    }
+    best_val_loss = float('inf')
+    counter = 0
+    
+    for epoch in range(num_epochs):
+        model.train()
+        optimizer.zero_grad()
+        out = model(train_data)
+        loss = criterion(out, train_data.y)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optimizer.step()
+        train_pred = torch.argmax(out, dim=1).cpu().numpy()
+        train_true = train_data.y.cpu().numpy()
+        train_acc = accuracy_score(train_true, train_pred)
+        train_f1 = f1_score(train_true, train_pred, average='weighted')
+        model.eval()
+        with torch.no_grad():
+            val_out = model(val_data)
+            val_loss = criterion(val_out, val_data.y)
+            val_pred = torch.argmax(val_out, dim=1).cpu().numpy()
+            val_true = val_data.y.cpu().numpy()
+            val_acc = accuracy_score(val_true, val_pred)
+            val_f1 = f1_score(val_true, val_pred, average='weighted')
+        scheduler.step(val_loss)
+        metrics['train_loss'].append(loss.item())
+        metrics['val_loss'].append(val_loss.item())
+        metrics['train_acc'].append(train_acc)
+        metrics['val_acc'].append(val_acc)
+        metrics['train_f1'].append(train_f1)
+        metrics['val_f1'].append(val_f1)
+        log_msg = (
+            f"Epoch {epoch+1}/{num_epochs}:\n"
+            f"  Train Loss: {loss.item():.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}\n"
+            f"  Val Loss: {val_loss.item():.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}\n"
+            f"  LR: {optimizer.param_groups[0]['lr']:.2e}"
+        )
+        logger.info(log_msg)
+        print(log_msg)
+        if val_loss.item() < best_val_loss:
+            best_val_loss = val_loss.item()
+            metrics['best_epoch'] = epoch
+            counter = 0
+            torch.save(model.state_dict(), 'best_model.pt')
+        else:
+            counter += 1
+            if counter >= patience:
+                logger.info(f"Early stopping at epoch {epoch+1}")
+                break
+    model.load_state_dict(torch.load('best_model.pt', map_location=device))
+    return model, metrics
+
+def plot_training_metrics(metrics, save_path='training_metrics.png'):
+    """Visualize training progress with multiple metrics"""
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
+    ax1.plot(metrics['train_loss'], label='Train')
+    ax1.plot(metrics['val_loss'], label='Validation')
+    ax1.axvline(metrics['best_epoch'], color='r', linestyle='--', label='Best Model')
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss')
+    ax1.set_title('Training and Validation Loss')
+    ax1.legend()
+    ax1.grid(True)
+    ax2.plot(metrics['train_acc'], label='Train')
+    ax2.plot(metrics['val_acc'], label='Validation')
+    ax2.axvline(metrics['best_epoch'], color='r', linestyle='--')
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Accuracy')
+    ax2.set_title('Accuracy')
+    ax2.legend()
+    ax2.grid(True)
+    ax3.plot(metrics['train_f1'], label='Train')
+    ax3.plot(metrics['val_f1'], label='Validation')
+    ax3.axvline(metrics['best_epoch'], color='r', linestyle='--')
+    ax3.set_xlabel('Epoch')
+    ax3.set_ylabel('F1 Score')
+    ax3.set_title('F1 Score (Weighted)')
+    ax3.legend()
+    ax3.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def analyze_top_genes(adata, top_n=10):
+    """Perform enrichment analysis on top variable genes and print top genes"""
+    try:
+        # Calculate gene variances
+        if sparse.issparse(adata.X):
+            gene_means = np.array(adata.X.mean(axis=0)).flatten()
+            gene_vars = np.array(adata.X.power(2).mean(axis=0)).flatten() - np.square(gene_means)
+        else:
+            gene_vars = np.var(adata.X, axis=0)
+        
+        # Get top genes
+        top_genes_idx = np.argsort(gene_vars)[::-1][:top_n]
+        top_genes = adata.var.index[top_genes_idx].tolist()
+        
+        # Print top genes
+        print("\nTop 10 Highly Variable Genes:")
+        print("============================")
+        for i, gene in enumerate(top_genes, 1):
+            print(f"{i}. {gene}")
+        
+        # Save top genes to file
+        with open('top_genes.txt', 'w') as f:
+            f.write("Top 10 Highly Variable Genes:\n")
+            f.write("============================\n")
+            for i, gene in enumerate(top_genes, 1):
+                f.write(f"{i}. {gene}\n")
+        
+        # Filter out ENSEMBL IDs for enrichment analysis
+        valid_genes = [g for g in top_genes if not (g.startswith('ENSG') or g.startswith('ENSMUSG'))]
+        
+        if len(valid_genes) < len(top_genes):
+            logger.warning(f"Filtered {len(top_genes) - len(valid_genes)} invalid gene names")
+        
+        if not valid_genes:
+            logger.warning("No valid gene names for enrichment analysis")
+            return
+        
+        # Perform enrichment analysis
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempting enrichment analysis (attempt {attempt + 1})")
+                enr = gp.enrichr(
+                    gene_list=valid_genes,
+                    gene_sets=['KEGG_2021_Human', 'GO_Biological_Process_2021'],
+                    organism='human',
+                    outdir='enrichment_results'
+                )
+                enr.results.to_csv('enrichment_results.csv')
+                logger.info("Enrichment analysis results saved to enrichment_results.csv")
+                
+                # Plot top enriched terms
+                try:
+                    terms = enr.results.head(10)
+                    plt.figure(figsize=(10, 6))
+                    sns.barplot(x='Adjusted P-value', y='Term', data=terms)
+                    plt.title('Top Enriched Terms')
+                    plt.tight_layout()
+                    plt.savefig('enriched_terms.png', dpi=300, bbox_inches='tight')
+                    plt.close()
+                except Exception as e:
+                    logger.warning(f"Could not plot enriched terms: {str(e)}")
+                break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    logger.error(f"Enrichment analysis failed after {max_retries} attempts: {str(e)}")
+                else:
+                    logger.warning(f"Enrichment analysis attempt {attempt + 1} failed, retrying...")
+                    time.sleep(5)
+    except Exception as e:
+        logger.error(f"Top gene analysis failed: {str(e)}")
+
+def main():
+    # Check dependencies
+    check_dependencies()
+    
+    # Load dataset
+    dataset_path = "/root/.cache/kagglehub/datasets/reminho/human-glioblastoma-dataset/versions/2/"
+    matrix_file = os.path.join(dataset_path, 'matrix.mtx')
+    barcodes_file = os.path.join(dataset_path, 'barcodes.tsv')
+    genes_file = os.path.join(dataset_path, 'genes.tsv')
+    
+    matrix = scipy.io.mmread(matrix_file).tocsc()
+    barcodes = pd.read_csv(barcodes_file, sep='\t', header=None, names=['Barcode'])
+    genes = pd.read_csv(genes_file, sep='\t', header=None)
+    
+    # Validate dimensions
+    assert matrix.shape[1] == len(barcodes), f"Barcode count ({len(barcodes)}) doesn't match matrix columns ({matrix.shape[1]})"
+    assert matrix.shape[0] == len(genes), f"Gene count ({len(genes)}) doesn't match matrix rows ({matrix.shape[0]})"
+    logger.info(f"Matrix shape: {matrix.shape}, Barcodes: {len(barcodes)}, Genes: {len(genes)}")
+    
+    # Handle gene names
+    if genes.shape[1] >= 2:
+        genes.columns = ['Ensembl', 'Gene', 'Other'][:genes.shape[1]]
+        gene_ids = genes['Ensembl']
+    else:
+        genes.columns = ['Gene']
+        gene_ids = genes['Gene']
+    
+    # Map gene symbols
+    gene_symbols, unmapped = map_gene_symbols(gene_ids)
+    genes['Gene_Symbol'] = gene_symbols
+    genes['Gene_Symbol'] = genes['Gene_Symbol'].replace('NA', 'Unknown')
+    
+    # Create AnnData object with sparse matrix
+    adata = sc.AnnData(
+        X=matrix.T,  # Transpose to have cells as rows, genes as columns
+        obs=pd.DataFrame(index=barcodes['Barcode']),
+        var=pd.DataFrame(index=genes['Gene_Symbol'])
+    )
+    adata.var_names_make_unique()
+    logger.info(f"AnnData created: {adata.shape}")
+    
+    # Preprocessing pipeline
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    
+    # Dimensionality reduction and clustering
+    sc.tl.pca(adata, svd_solver='arpack')
+    sc.pp.neighbors(adata, n_neighbors=15, n_pcs=40)
+    sc.tl.leiden(adata, resolution=0.5)
+    
+    # Feature selection
+    sc.pp.highly_variable_genes(adata, n_top_genes=800)
+    adata = adata[:, adata.var.highly_variable]
+    
+    # Filtering
+    sc.pp.filter_genes(adata, min_cells=3)
+    sc.pp.filter_cells(adata, min_genes=100)
+    adata.var_names_make_unique()
+    
+    # Final clustering
+    sc.tl.pca(adata, svd_solver='arpack')
+    sc.pp.neighbors(adata, n_neighbors=15, n_pcs=40)
+    sc.tl.leiden(adata, resolution=0.5)
+    
+    # Prepare graph data
+    x = torch.tensor(adata.X.toarray() if sparse.issparse(adata.X) else adata.X, dtype=torch.float)
+    edges = adata.obsp['connectivities'].tocoo()
+    edge_index = torch.tensor([edges.row, edges.col], dtype=torch.long)
+    edge_index = to_undirected(edge_index)
+    
+    # Create labels from Leiden clusters
+    labels = torch.tensor(adata.obs['leiden'].astype(int).values, dtype=torch.long)
+    num_classes = len(adata.obs['leiden'].unique())
+    
+    # Split data with stratification
+    train_indices, temp_indices = train_test_split(
+        range(adata.shape[0]),
+        test_size=0.4,
+        random_state=42,
+        stratify=labels.numpy()
+    )
+    val_indices, test_indices = train_test_split(
+        temp_indices,
+        test_size=0.5,
+        random_state=42,
+        stratify=labels[temp_indices].numpy()
+    )
+    
+    # Create graph subsets
+    train_edge_index = robust_subset_edge_index(edge_index, train_indices, adata.shape[0])
+    val_edge_index = robust_subset_edge_index(edge_index, val_indices, adata.shape[0])
+    test_edge_index = robust_subset_edge_index(edge_index, test_indices, adata.shape[0])
+    
+    # Create PyG datasets
+    train_data = Data(
+        x=x[train_indices],
+        edge_index=train_edge_index,
+        y=labels[train_indices]
+    )
+    val_data = Data(
+        x=x[val_indices],
+        edge_index=val_edge_index,
+        y=labels[val_indices]
+    )
+    test_data = Data(
+        x=x[test_indices],
+        edge_index=test_edge_index,
+        y=labels[test_indices]
+    )
+    
+    # Initialize model and training
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = ImprovedGNN(
+        num_features=train_data.x.shape[1],
+        num_classes=num_classes,
+        hidden_dim=128
+    ).to(device)
+    
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=0.001,
+        weight_decay=1e-4
+    )
+    criterion = nn.CrossEntropyLoss()
+    
+    # Move data to device
+    train_data = train_data.to(device)
+    val_data = val_data.to(device)
+    test_data = test_data.to(device)
+    
+    # Train model
+    model, metrics = train_model(
+        model,
+        train_data,
+        val_data,
+        optimizer,
+        criterion,
+        device,
+        num_epochs=100,
+        patience=15
+    )
+    
+    # Visualize training
+    plot_training_metrics(metrics)
+    
+    # Final evaluation
+    model.eval()
+    with torch.no_grad():
+        test_out = model(test_data)
+        test_pred = torch.argmax(test_out, dim=1).cpu().numpy()
+        test_true = test_data.y.cpu().numpy()
+        test_acc = accuracy_score(test_true, test_pred)
+        test_f1 = f1_score(test_true, test_pred, average='weighted')
+        logger.info(f"Final Test Accuracy: {test_acc:.4f}, F1: {test_f1:.4f}")
+        print(f"Final Test Accuracy: {test_acc:.4f}, F1: {test_f1:.4f}")
+        cm = confusion_matrix(test_true, test_pred)
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.title('Confusion Matrix')
+        plt.savefig('confusion_matrix.png', dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    # Biological analysis
+    analyze_top_genes(adata)
+    
+    # Save UMAP visualization
+    sc.tl.umap(adata)
+    sc.pl.umap(adata, color='leiden', save='_clusters.png')
+    
+    # Differential expression
+    sc.tl.rank_genes_groups(adata, 'leiden', method='wilcoxon')
+    sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False, save='_de.png')
+
+if __name__ == '__main__':
+    main()
