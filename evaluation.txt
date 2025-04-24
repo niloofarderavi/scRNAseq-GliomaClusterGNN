@@ -10,25 +10,7 @@ torch_geometric      version: 2.6.1
 scanpy               version: 1.11.1
 scipy                version: 1.14.1
 torchvision          version: 0.21.0+cu124
-==================================================
 
-WARNING:biothings.client:Input sequence provided is already in string format. No operation performed
-WARNING:biothings.client:Input sequence provided is already in string format. No operation performed
-INFO:biothings.client:querying 1-1000 ...
-INFO:biothings.client:querying 1001-1186 ...
-INFO:biothings.client:Finished.
-WARNING:biothings.client:1 input query terms found no hit:	['ENSG00000112096']
-WARNING:SpatialRNA:Unmapped genes: ['ENSG00000112096', 'ENSG00000286070']
-/usr/local/lib/python3.11/dist-packages/anndata/_core/anndata.py:1758: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
-  utils.warn_names_duplicates("var")
-<ipython-input-7-cf3a19b01a8f>:364: FutureWarning: In the future, the default backend for leiden will be igraph instead of leidenalg.
-
- To achieve the future defaults please pass: flavor="igraph" and n_iterations=2.  directed must also be False to work with igraph's implementation.
-  sc.tl.leiden(adata, resolution=0.5)
-/usr/local/lib/python3.11/dist-packages/scanpy/preprocessing/_simple.py:287: ImplicitModificationWarning: Trying to modify attribute `.var` of view, initializing view as actual.
-  adata.var["n_cells"] = number
-<ipython-input-7-cf3a19b01a8f>:383: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:254.)
-  edge_index = torch.tensor([edges.row, edges.col], dtype=torch.long)
 Epoch 1/100:
   Train Loss: 2.2878, Acc: 0.2284, F1: 0.1784
   Val Loss: 1.8639, Acc: 0.3602, F1: 0.3212
